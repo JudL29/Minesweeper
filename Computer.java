@@ -5,7 +5,7 @@ public final class Computer extends Game {
 
     int ticker = 0;
 
-    public void solveOneStep() {
+    public void solveOnePass() {
         if (!gameOver) {
             findBombs();
             clearTiles();
@@ -14,6 +14,40 @@ public final class Computer extends Game {
             }
             ticker++;
         }
+    }
+
+    public void solveOneStep() {
+        if (gameOver) return;
+
+        runThroughBothOnce();
+    }
+
+    
+    public boolean runThroughEasyOnce() {
+        boolean change;
+        do {
+            change = false;
+            for (int row = 0; row < rows; row++) {
+                for (int col = 0; col < cols; col++) {
+                    Grid t = grid[row][col];
+                    if (!t.isRevealed()) continue;
+
+                    change |= findBomb(row, col);
+                    change |= clearTile(row, col);
+                }
+            }
+        }
+        while (change);
+
+        return change;
+    }
+
+    public void runThroughBothOnce() {
+        boolean progress = true;
+        while (progress) {
+            progress = runThroughEasyOnce();
+        }
+        setTheories();
     }
 
     private void findBombs(){
@@ -26,35 +60,40 @@ public final class Computer extends Game {
         }
     }
     
-    private void findBomb(int x, int y){
+    private boolean findBomb(int x, int y){
+        int mines = grid[x][y].getNearbyMines();
+        if (mines == 0) return false;
+
         int iMin = Math.max(0, x - 1);
         int iMax = Math.min(rows - 1, x + 1);
         int jMin = Math.max(0, y - 1);
         int jMax = Math.min(cols - 1, y + 1);
         int unclearedTiles = 0;
+        boolean flaggedTile = false;
+
+        for (int i = iMin; i <= iMax; i++) {
+            for (int j = jMin; j <= jMax; j++) {
+                if (!grid[i][j].isRevealed()) unclearedTiles++;
+            }
+        }
+
+        if (mines == unclearedTiles){
             for (int i = iMin; i <= iMax; i++) {
                 for (int j = jMin; j <= jMax; j++) {
-                    if (!grid[i][j].isRevealed()){
-                        unclearedTiles++;
+                    if (!grid[i][j].isRevealed() && !grid[i][j].isFlagged()){
+                        flagTile(grid[i][j]);
+                        flaggedTile = true;
                     }
                 }
             }
-            if (grid[x][y].getNearbyMines() == unclearedTiles){
-                for (int i = iMin; i <= iMax; i++) {
-                    for (int j = jMin; j <= jMax; j++) {
-                        if (!grid[i][j].isRevealed() && !grid[i][j].isFlagged()){
-                            flagTile(grid[i][j]);
-                        }
-                    }
-                }
-            }
+        }
+        return flaggedTile;
     }
     
     private void clearTiles(){
-        massUnflagIncorrect();
         for (int row = 0; row < rows; row++){
             for(int col = 0; col < cols; col++){
-                if (grid[row][col].isRevealed() && clearTile(row, col));
+                if (grid[row][col].isRevealed()) clearTile(row, col);
             }
         }
     }
@@ -67,6 +106,8 @@ public final class Computer extends Game {
         int minesFlagged = 0;
         int unclearedTiles = 0;
         Grid tile = grid[x][y];
+        boolean clearedTile = false;
+
         for (int i = iMin; i <= iMax; i++) {
             for(int j = jMin; j <= jMax; j++) {
                 if (!grid[i][j].isRevealed()){
@@ -77,20 +118,17 @@ public final class Computer extends Game {
                 }
             }
         }
-        if (minesFlagged > tile.getNearbyMines()) {
-            unflagIncorrectAroundTile(tile);
-            return false;
-        }
-        else if (minesFlagged == tile.getNearbyMines() && unclearedTiles > tile.getNearbyMines()) {
+        if (minesFlagged == tile.getNearbyMines() && unclearedTiles > tile.getNearbyMines()) {
             for (int i = iMin; i <= iMax; i++) {
                 for(int j = jMin; j <= jMax; j++) {
                     if (!grid[i][j].isRevealed() && !grid[i][j].isFlagged()) {
                         removeTile(i, j);
+                        clearedTile = true;
                     }
                 }
             }
         }
-        return true;
+        return clearedTile;
     }
 
     private void setTheories(){
@@ -102,87 +140,101 @@ public final class Computer extends Game {
     }
 
     private void setTheory(int row, int col){
-        if (grid[row][col].isRevealed() && grid[row][col].getNearbyMines() != 0) {
-            int localMineOriginal = grid[row][col].getNearbyMines();
 
-            ArrayList<Grid> possiblePair = new ArrayList<>();
+        Grid tile = grid[row][col];
+        if (!tile.isRevealed() || tile.getNearbyMines() == 0) return;
 
-            ArrayList<Grid> originalGroup = new ArrayList<>();
+        int localMineOriginal = tile.getNearbyMines();
+        Set<Grid> originalGroup = new HashSet<>();
+        ArrayList<Grid> possiblePair = new ArrayList<>();
 
-            for (Grid directions : grid[row][col].getCardinalDirections()) {
-                if (directions != null) {
-                    if (!directions.isRevealed() && !directions.isFlagged()){
-                        originalGroup.add(directions);
-                    }
-                    if (directions.isRevealed() && directions.getNearbyMines() != 0){
-                        possiblePair.add(directions);
-                    }
-                }
-                if (directions != null && directions.isFlagged()){
-                    localMineOriginal--;
-                }
+        for (Grid originNeighbor : tile.getCardinalDirections()) {
+            if (originNeighbor == null) continue;
+
+            if (originNeighbor.isFlagged()){
+                localMineOriginal--;
             }
-
-            if (originalGroup.isEmpty() || possiblePair.isEmpty() || originalGroup.isEmpty()){
-                return;
+            else if (!originNeighbor.isRevealed()) {
+                originalGroup.add(originNeighbor);
             }
-
-            for (int i = 0; i < possiblePair.size(); i++){
-                ArrayList<Grid> pairGroup = new ArrayList<>();
-                int localMinePair = possiblePair.get(i).getNearbyMines();
-
-                ArrayList<Grid> originalExclusiveGroup = new ArrayList<>();
-                ArrayList<Grid> pairExclusiveGroup = new ArrayList<>();
-                
-                for (Grid directions : possiblePair.get(i).getCardinalDirections()) {
-                    if (directions != null && !directions.isRevealed() && !directions.isFlagged()) {
-                        pairGroup.add(directions);
-                        if (!originalGroup.contains(directions)){
-                            pairExclusiveGroup.add(directions);
-                        }
-                    }
-                    if (directions != null && directions.isFlagged()){
-                        localMinePair--;
-                    }
-                }
-
-                for (Grid oUnrevealed : originalGroup){
-                    if (!pairGroup.contains(oUnrevealed)){
-                        originalExclusiveGroup.add(oUnrevealed);
-                    }
-                }
-                
-                if (localMineOriginal > localMinePair){
-                    if (localMineOriginal - localMinePair == originalExclusiveGroup.size() && !originalExclusiveGroup.isEmpty()) {
-                        for (Grid revealThis : pairExclusiveGroup){
-                            removeTile(revealThis.getXCoord(), revealThis.getYCoord());
-                        }
-                        for (Grid flagThat : originalExclusiveGroup){
-                            if (!flagThat.isFlagged()) {
-                                flagTile(flagThat);
-                                flagThat.setBackground(Color.PINK);
-                            }
-                        }
-                    }
-                }
-                else if (localMineOriginal < localMinePair) {
-                    if (localMinePair - localMineOriginal == pairExclusiveGroup.size() && !pairExclusiveGroup.isEmpty()) {
-                        for (Grid revealThis : originalExclusiveGroup){
-                            removeTile(revealThis.getXCoord(), revealThis.getYCoord());
-                        }
-                        for (Grid flagThat : pairExclusiveGroup){
-                            if (!flagThat.isFlagged()) {
-                                flagTile(flagThat);
-                                flagThat.setBackground(Color.PINK);
-                            }
-                            
-                        }
-                    }
-                }
-
+            
+            if (originNeighbor.isRevealed() && originNeighbor.getNearbyMines() != 0){
+                possiblePair.add(originNeighbor);
             }
-        
+            
         }
+
+        if (localMineOriginal == 0) {
+            for (Grid revealThis : originalGroup){
+                removeTile(revealThis.getXCoord(), revealThis.getYCoord());
+            }
+            return;
+        }
+        
+        if (localMineOriginal == originalGroup.size()) {
+            for (Grid flagThis : originalGroup){
+                flagTile(flagThis);
+                flagThis.setBackground(Color.PINK);
+            }
+            return;
+        }
+        
+        for (Grid pair : possiblePair) {
+            int localMinePair = pair.getNearbyMines();
+            Set<Grid> pairGroup = new HashSet<>();
+                
+            for (Grid pairNeighbor : pair.getCardinalDirections()) {
+                if (pairNeighbor == null) continue;
+
+                if (pairNeighbor.isFlagged()){
+                    localMinePair--;
+                }
+                else if (!pairNeighbor.isRevealed()) {
+                    pairGroup.add(pairNeighbor);
+                }
+            }
+
+            int diff = localMineOriginal - localMinePair;
+
+            // Exclusive sets
+            Set<Grid> originalExclusive = new HashSet<>(originalGroup);
+            originalExclusive.removeAll(pairGroup);
+
+            Set<Grid> pairExclusive = new HashSet<>(pairGroup);
+            pairExclusive.removeAll(originalGroup);
+
+            if (diff == 0) {
+                if (originalExclusive.isEmpty() && !pairExclusive.isEmpty()) {
+                    for (Grid removeExact : pairExclusive) removeTile(removeExact.getXCoord(), removeExact.getYCoord());
+                }
+                // If P ⊆ O (pairExclusive empty), then O\P are safe
+                if (!originalExclusive.isEmpty() && pairExclusive.isEmpty()) {
+                    for (Grid removeExact : originalExclusive) removeTile(removeExact.getXCoord(), removeExact.getYCoord());
+                }
+            }
+            else if (diff > 0 && diff == originalExclusive.size()){
+                removeSetTheory(pairExclusive, originalExclusive);
+            }
+            else if (-diff == pairExclusive.size()){
+                removeSetTheory(originalExclusive, pairExclusive);
+            }
+        }
+    }
+
+    private void removeSetTheory(Set<Grid> reveal, Set<Grid> flag) {
+        for (Grid revealThat : reveal){
+            removeTile(revealThat.getXCoord(), revealThat.getYCoord());
+        }
+        for (Grid flagThat : flag){
+            if (!flagThat.isFlagged()) {
+                flagTile(flagThat);
+                flagThat.setBackground(Color.PINK);
+            }
+        }
+    }
+
+    private void probability(){
+        
     }
 
     private void unflagIncorrectAroundTile(Grid tile){
@@ -214,8 +266,4 @@ public final class Computer extends Game {
             }
         }
     } 
-    
-    private void probability(){
-        
-    }
 }

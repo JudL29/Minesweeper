@@ -294,18 +294,6 @@ public class Game {
             }
             if(!gameOver && !grid[row][col].isFlagged()){
                 removeTile(row, col);
-                if(grid[row][col].isMine()){
-                    explanationLabel.setText("You Lose! Time: " + (int) elapsedTime + " seconds");
-                    restartButton.setVisible(true);
-                    revealMines();
-                }
-                else if(win()){
-                    gameTimer.stop();
-                    gameOver = true;
-                    explanationLabel.setText("You Win! Time: " + (int) elapsedTime + " seconds");
-                    restartButton.setVisible(true);
-                    revealMines();
-                }
             }
         }
         if (SwingUtilities.isRightMouseButton(e) || SwingUtilities.isLeftMouseButton(e) && e.isControlDown()){
@@ -317,10 +305,8 @@ public class Game {
 
     protected void removeTile(int x, int y){
         Grid tile = grid[x][y];
-        if(tile.isMine()){
-            gameTimer.stop();
-            gameOver = true;
-        } else {
+        if(testEndCondition(tile));
+        else {
             tile.setRevealed();
             tile.setBackground(determineTileColor(x, y, true));
             if (grid[x][y].getNearbyMines() > 0) {
@@ -341,5 +327,25 @@ public class Game {
                 }
             }
         }
+    }
+
+    private boolean testEndCondition(Grid tile) {
+        if(tile.isMine()){
+            gameTimer.stop();
+            gameOver = true;
+            explanationLabel.setText("You Lose! Time: " + (int) elapsedTime + " seconds");
+            restartButton.setVisible(true);
+            revealMines();
+            return true;
+        }
+        else if(win()){
+            gameTimer.stop();
+            gameOver = true;
+            explanationLabel.setText("You Win! Time: " + (int) elapsedTime + " seconds");
+            restartButton.setVisible(true);
+            revealMines();
+            return true;
+        }
+        return false;
     }
 }

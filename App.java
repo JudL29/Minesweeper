@@ -7,7 +7,7 @@ public class App {
 
         while (true) { 
             computer.solveOneStep();
-            Thread.sleep(25); // > 25 for no buggy restarts
+            Thread.sleep(30); // > 25 for smaller chance of buggy restarts
         }
     }
 }
