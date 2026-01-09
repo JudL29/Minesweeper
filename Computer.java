@@ -1,10 +1,22 @@
 import java.awt.*;
-import java.lang.reflect.Array;
 import java.util.*;
 
-public class Computer extends Game {
+public final class Computer extends Game {
 
-    public void findBombs(){
+    int ticker = 0;
+
+    public void solveOneStep() {
+        if (!gameOver) {
+            findBombs();
+            clearTiles();
+            if (ticker % 4 == 3){
+                setTheories();
+            }
+            ticker++;
+        }
+    }
+
+    private void findBombs(){
         for (int row = 0; row < rows; row++){
             for(int col = 0; col < cols; col++){
                 if (grid[row][col].isRevealed()) {
@@ -31,33 +43,30 @@ public class Computer extends Game {
                 for (int i = iMin; i <= iMax; i++) {
                     for (int j = jMin; j <= jMax; j++) {
                         if (!grid[i][j].isRevealed() && !grid[i][j].isFlagged()){
-                            grid[i][j].setFlagged();
-                            grid[i][j].setBackground(Color.BLUE);
-                            totalFlags--;
+                            flagTile(grid[i][j]);
                         }
                     }
                 }
-                
             }
     }
     
-    public void clearTiles(){
+    private void clearTiles(){
+        massUnflagIncorrect();
         for (int row = 0; row < rows; row++){
             for(int col = 0; col < cols; col++){
-                if (grid[row][col].isRevealed()) {
-                    clearTile(row, col);
-                }
+                if (grid[row][col].isRevealed() && clearTile(row, col));
             }
         }
     }
     
-    private void clearTile(int x, int y){
+    private boolean clearTile(int x, int y){
         int iMin = Math.max(0, x - 1);
         int iMax = Math.min(rows - 1, x + 1);
         int jMin = Math.max(0, y - 1);
         int jMax = Math.min(cols - 1, y + 1);
         int minesFlagged = 0;
         int unclearedTiles = 0;
+        Grid tile = grid[x][y];
         for (int i = iMin; i <= iMax; i++) {
             for(int j = jMin; j <= jMax; j++) {
                 if (!grid[i][j].isRevealed()){
@@ -68,7 +77,11 @@ public class Computer extends Game {
                 }
             }
         }
-        if (minesFlagged == grid[x][y].getNearbyMines() && unclearedTiles > grid[x][y].getNearbyMines()) {
+        if (minesFlagged > tile.getNearbyMines()) {
+            unflagIncorrectAroundTile(tile);
+            return false;
+        }
+        else if (minesFlagged == tile.getNearbyMines() && unclearedTiles > tile.getNearbyMines()) {
             for (int i = iMin; i <= iMax; i++) {
                 for(int j = jMin; j <= jMax; j++) {
                     if (!grid[i][j].isRevealed() && !grid[i][j].isFlagged()) {
@@ -77,9 +90,10 @@ public class Computer extends Game {
                 }
             }
         }
+        return true;
     }
 
-    public void setTheories(){
+    private void setTheories(){
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
                 setTheory(row, col);
@@ -91,9 +105,9 @@ public class Computer extends Game {
         if (grid[row][col].isRevealed() && grid[row][col].getNearbyMines() != 0) {
             int localMineOriginal = grid[row][col].getNearbyMines();
 
-            ArrayList<Grid> possiblePair = new ArrayList<Grid>();
+            ArrayList<Grid> possiblePair = new ArrayList<>();
 
-            ArrayList<Grid> originalGroup = new ArrayList<Grid>();
+            ArrayList<Grid> originalGroup = new ArrayList<>();
 
             for (Grid directions : grid[row][col].getCardinalDirections()) {
                 if (directions != null) {
@@ -113,13 +127,12 @@ public class Computer extends Game {
                 return;
             }
 
-            // possiblePair is now in scope here
             for (int i = 0; i < possiblePair.size(); i++){
-                ArrayList<Grid> pairGroup = new ArrayList<Grid>();
+                ArrayList<Grid> pairGroup = new ArrayList<>();
                 int localMinePair = possiblePair.get(i).getNearbyMines();
 
-                ArrayList<Grid> originalExclusiveGroup = new ArrayList<Grid>();
-                ArrayList<Grid> pairExclusiveGroup = new ArrayList<Grid>();
+                ArrayList<Grid> originalExclusiveGroup = new ArrayList<>();
+                ArrayList<Grid> pairExclusiveGroup = new ArrayList<>();
                 
                 for (Grid directions : possiblePair.get(i).getCardinalDirections()) {
                     if (directions != null && !directions.isRevealed() && !directions.isFlagged()) {
@@ -146,9 +159,8 @@ public class Computer extends Game {
                         }
                         for (Grid flagThat : originalExclusiveGroup){
                             if (!flagThat.isFlagged()) {
-                            flagThat.setFlagged();
-                            flagThat.setBackground(Color.PINK);
-                            totalFlags--;
+                                flagTile(flagThat);
+                                flagThat.setBackground(Color.PINK);
                             }
                         }
                     }
@@ -160,10 +172,10 @@ public class Computer extends Game {
                         }
                         for (Grid flagThat : pairExclusiveGroup){
                             if (!flagThat.isFlagged()) {
-                                flagThat.setFlagged();
+                                flagTile(flagThat);
                                 flagThat.setBackground(Color.PINK);
-                                totalFlags--;
                             }
+                            
                         }
                     }
                 }
@@ -172,55 +184,38 @@ public class Computer extends Game {
         
         }
     }
-    private boolean isNextToNumberedTile(Grid tile){
+
+    private void unflagIncorrectAroundTile(Grid tile){
         for (Grid directions : tile.getCardinalDirections()) {
-            if (directions != null && directions.isRevealed() && directions.getNearbyMines() != 0){
-                return true;
+            if (directions != null && directions.isFlagged()){
+                flagTile(tile);
             }
         }
-        return false;
-    }
-    private ArrayList edgeTiles(){
-        ArrayList<Grid> edgeTiles = new ArrayList<Grid>();
+    } 
+
+    private void massUnflagIncorrect(){
         for(int i = 0; i < rows; i++){
             for (int j = 0; j < cols; j++){
-                if (!grid[i][j].isRevealed()){
+                if (grid[i][j].isRevealed()){
+                    int flagAmount = 0;
+                    ArrayList<Grid> flaggedTiles = new ArrayList<>();
                     for (Grid directions : grid[i][j].getCardinalDirections()) {
-                        if (directions != null && directions.isRevealed()){
-                            edgeTiles.add(grid[i][j]);
-                            break;
+                        if (directions != null && directions.isFlagged()){
+                            flagAmount++;
+                            flaggedTiles.add(directions);
+                        }
+                    }
+                    if (flagAmount > grid[i][j].getNearbyMines()) {
+                        for (Grid flagged : flaggedTiles){
+                            flagged.setFlagged();
                         }
                     }
                 }
             }
         }
-        int i = edgeTiles.get(0).getX();
-        int j = edgeTiles.get(0).getY();
-        while (true) {
-            if (!grid[i][j].getEast().isRevealed() && !grid[i][j].getEast().isFlagged() && isNextToNumberedTile(grid[i][j].getEast())) {
-                edgeTiles.add(grid[i][j].getEast());
-                j++;
-            } else if (true) {
-                
-            } else if (true) {
-                
-            } else if (true) {
-                
-            } else if (true) {
-                
-            } else if (true) {
-                
-            } else if (true) {
-                
-            } else if (true) {
-                
-            } else if (i + 1 == rows || j + 1 == cols || i - 1 < 0 || j - 1 < 0) {
-                break;
-            }
-        }
-        return edgeTiles;
-    }
-    private void probability(ArrayList<Grid> edgeTiles){
+    } 
+    
+    private void probability(){
         
     }
 }

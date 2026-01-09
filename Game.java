@@ -1,32 +1,33 @@
 import java.awt.*;
 import java.awt.event.*;
-import javax.swing.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import javax.swing.*;
 
 public class Game {
-    boolean start = true;
+    boolean start = false;
     boolean gameOver = false;
     double elapsedTime = 0;
 
-    // int totalMines = 99;
-    // int totalFlags = 99;
+    int totalMines = 99;
+    int totalFlags = 99;
 
-    // final int rows  = 20;
-    // final int cols = 24;
+    final int rows  = 20;
+    final int cols = 24;
     
     final int tileSize = 30;
     
-    int totalMines = 20;
-    int totalFlags = 20;
+    //int totalMines = 20;
+    //int totalFlags = 20;
 
-    final int rows  = 10;
-    final int cols = 10;
+    //final int rows  = 10;
+    //final int cols = 10;
 
 
     JFrame frame = new JFrame("MineSweeper");
     JPanel timerPanel = new JPanel();
     JPanel explanationPanel = new JPanel();
+    JLabel explanationLabel = new JLabel("Click on a tile to start the game!");
     JButton restartButton = new JButton("Restart");
     JPanel boardPanel = new JPanel();
 
@@ -46,7 +47,6 @@ public class Game {
         // ===== Explanation Panel =====
         explanationPanel.setBackground(Color.lightGray);
         explanationPanel.setPreferredSize(new Dimension(cols * tileSize, 150));
-        JLabel explanationLabel = new JLabel("Click on a tile to start the game!");
         explanationLabel.setFont(new Font("Arial", Font.BOLD, 20));
         explanationLabel.setForeground(Color.white);
         explanationPanel.add(explanationLabel);
@@ -56,31 +56,24 @@ public class Game {
         restartButton.setFont(new Font("Arial", Font.BOLD, 20));
         restartButton.setVisible(false);
 
-        restartButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                // Reset game state
-                start = true;
-                gameOver = false;
-                elapsedTime = 0;
-                totalFlags = totalMines;
-                timerLabel.setText("Time: 0 seconds");
-                explanationLabel.setText("Click on a tile to start the game!");
-                restartButton.setVisible(false);
-                gameTimer.stop();
-
-                // Reset grid and tiles
-                for (int i = 0; i < rows; i++) {
-                    for (int j = 0; j < cols; j++) {
-                        grid[i][j].reset();
-                        grid[i][j].setEnabled(true);
-                        grid[i][j].setText("");
-                        if ((i + j) % 2 == 0) {
-                            grid[i][j].setBackground(new Color(76, 175, 80)); //Slighty dark green
-                        } else {
-                            grid[i][j].setBackground(new Color(167, 216, 161)); //Lighter green
-                        }
-                    }
+        restartButton.addActionListener((ActionEvent e) -> {
+            // Reset game state
+            start = false;
+            gameOver = false;
+            elapsedTime = 0;
+            totalFlags = totalMines;
+            timerLabel.setText("Time: 0 seconds");
+            explanationLabel.setText("Click on a tile to start the game!");
+            restartButton.setVisible(false);
+            gameTimer.stop();
+            
+            // Reset grid and tiles
+            for (int i = 0; i < rows; i++) {
+                for (int j = 0; j < cols; j++) {
+                    grid[i][j].reset();
+                    grid[i][j].setEnabled(true);
+                    grid[i][j].setText("");
+                    grid[i][j].setBackground(determineTileColor(i, j, false));
                 }
             }
         });
@@ -108,62 +101,17 @@ public class Game {
                 tile.setBorder(BorderFactory.createLineBorder(new Color(60, 120, 60), 1));
                 tile.setContentAreaFilled(true);
                 tile.setOpaque(true);
-
-                // Alternate tile background color
-                if ((i + j) % 2 == 0) {
-                    tile.setColor(new Color(76, 175, 80)); // Slightly dark green
-                } else {
-                    tile.setColor(new Color(167, 216, 161)); // Lighter green
-                }
+                tile.setBackground(determineTileColor(i, j, false));
 
                 boardPanel.add(tile);
 
-                final int row = i;
-                final int col = j;
+                int row = i;
+                int col = j;
 
                 tile.addMouseListener(new MouseAdapter() {
                     @Override
                     public void mousePressed(MouseEvent e) {
-                        if (SwingUtilities.isLeftMouseButton(e) && !e.isControlDown()) {
-                            if (start && !grid[row][col].isFlagged()) {
-                                start = false;
-                                placeMines(row, col);
-                                gameTimer.start();
-                            }
-                            if(!gameOver && !grid[row][col].isFlagged()){
-                            removeTile(row, col);
-                            if(grid[row][col].isMine()){
-                                gameTimer.stop();
-                                gameOver = true;
-                                explanationLabel.setText("You Lose! Time: " + (int) elapsedTime + " seconds");
-                                restartButton.setVisible(true);
-                                revealMines();
-                                
-                            }
-                            else if(win()){
-                                gameTimer.stop();
-                                gameOver = true;
-                                explanationLabel.setText("You Win! Time: " + (int) elapsedTime + " seconds");
-                                restartButton.setVisible(true);
-                                revealMines();
-                            }
-                            }
-                        }
-                        // Optional: add right-click flag logic here
-                        if (SwingUtilities.isRightMouseButton(e) || SwingUtilities.isLeftMouseButton(e) && e.isControlDown()){
-                            if(grid[row][col].isRevealed() == false && !gameOver){
-                            if(!grid[row][col].isFlagged()){
-                            grid[row][col].setFlagged();
-                            grid[row][col].setBackground(Color.BLUE);
-                            totalFlags--;
-                            }
-                            else {
-                                grid[row][col].setOriginalColor();
-                                grid[row][col].setFlagged();
-                                totalFlags++;
-                            }
-                        }
-                        }
+                        addTileListener(row, col, e);
                     }
                 });
             }
@@ -204,15 +152,12 @@ public class Game {
         }
 
         // ===== Timer Logic =====
-        gameTimer = new Timer(100, new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (!gameOver) {
-                    elapsedTime += .1;
-                    timerLabel.setText("Time: " + (int) elapsedTime + " seconds");
-                    explanationLabel.setText("Flags remaining: " + totalFlags);
-    
-                }
+        gameTimer = new Timer(100, (ActionEvent e) -> {
+            if (!gameOver) {
+                elapsedTime += .1;
+                timerLabel.setText("Time: " + (int) elapsedTime + " seconds");
+                explanationLabel.setText("Flags remaining: " + totalFlags);
+                
             }
         });
         
@@ -237,56 +182,28 @@ public class Game {
         while (minesPlaced < totalMines) {
             int x = (int) (Math.random() * rows);
             int y = (int) (Math.random() * cols);
-            ArrayList<Integer> startRows = new ArrayList<Integer> (Arrays.asList(startRow-2, startRow-1, startRow, startRow+1, startRow+2));
-            ArrayList<Integer> startCols = new ArrayList<Integer> (Arrays.asList(startCol-2, startCol-1, startCol, startCol+1, startCol+2));
+            ArrayList<Integer> startRows = new ArrayList<> (Arrays.asList(startRow-2, startRow-1, startRow, startRow+1, startRow+2));
+            ArrayList<Integer> startCols = new ArrayList<> (Arrays.asList(startCol-2, startCol-1, startCol, startCol+1, startCol+2));
             
-            // Skip first clicked tile and already mined ones
+            // Skip tiles around starting tiles and already mined ones
             if (!(startRows.contains(x) && startCols.contains(y)) && !grid[x][y].isMine()) {
-            grid[x][y].setMine();
-            //grid[x][y].setBackground(Color.RED); // For testing purposes, show where mines are placed
-            minesPlaced++;
-            int iMin = Math.max(0, x - 1);
-            int iMax = Math.min(rows - 1, x + 1);
-            int jMin = Math.max(0, y - 1);
-            int jMax = Math.min(cols - 1, y + 1);
-            for (int i = iMin; i <= iMax; i++) {
-                for (int j = jMin; j <= jMax; j++) {
-                    grid[i][j].setNearbyMines(grid[i][j].getNearbyMines() + 1);
-                    //grid[i][j].setText(Integer.toString(grid[i][j].getNearbyMines()));
-                    if(grid[i][j].getNearbyMines() > 0){
-                //grid[i][j].setText(Integer.toString(grid[i][j].getNearbyMines()));
-                switch (grid[i][j].getNearbyMines()) {
-                    case 1:
-                        grid[i][j].setForeground(Color.BLUE);
-                        break;
-                    case 2:
-                        grid[i][j].setForeground(new Color(0, 105, 0)); // Dark Green
-                        break;
-                    case 3:
-                        grid[i][j].setForeground(Color.RED);
-                        break;
-                    case 4:
-                        grid[i][j].setForeground(new Color(0, 0, 128)); // Dark Blue
-                        break;
-                    case 5:
-                        grid[i][j].setForeground(new Color(178, 34, 34)); // Firebrick
-                        break;
-                    case 6:
-                        grid[i][j].setForeground(new Color(72, 209, 204)); // Medium Turquoise
-                        break;
-                    case 7:
-                        grid[i][j].setForeground(Color.BLACK);
-                        break;
-                    case 8:
-                        grid[i][j].setForeground(Color.DARK_GRAY);
-                        break;
-                    default:
-                        grid[i][j].setForeground(Color.BLACK);
-                        break;
-                }
-            }
-                }
-            }
+                grid[x][y].setMine();
+                //grid[x][y].setBackground(Color.RED); // For testing purposes, show where mines are placed
+                minesPlaced++;
+                int iMin = Math.max(0, x - 1);
+                int iMax = Math.min(rows - 1, x + 1);
+                int jMin = Math.max(0, y - 1);
+                int jMax = Math.min(cols - 1, y + 1);
+                    for (int i = iMin; i <= iMax; i++) {
+                        for (int j = jMin; j <= jMax; j++) {
+                            grid[i][j].setNearbyMines(grid[i][j].getNearbyMines() + 1);
+                            //grid[i][j].setText(Integer.toString(grid[i][j].getNearbyMines()));
+                            if(grid[i][j].getNearbyMines() > 0){
+                                //grid[i][j].setText(Integer.toString(grid[i][j].getNearbyMines()));
+                                grid[i][j].setForeground(determineFontColor(grid[i][j].getNearbyMines()));
+                            }
+                        }
+                    }
             for (int i = 0; i < rows; i++) {
                 for(int j = 0; j < cols; j++){
                     if (grid[i][j].isMine()) {
@@ -302,55 +219,124 @@ public class Game {
 
     //Method checks if the user wins
     private void revealMines(){
-    for(int i = 0; i < rows; i++){
-        for(int j = 0; j < cols; j++){
-            if(grid[i][j].isMine()){
-                grid[i][j].setBackground(Color.RED);
-                grid[i][j].setText("M");
+        for(int i = 0; i < rows; i++){
+            for(int j = 0; j < cols; j++){
+                if(grid[i][j].isMine()){
+                    grid[i][j].setBackground(Color.RED);
+                    grid[i][j].setText("M");
+                }
             }
         }
     }
-}
-    private boolean win(){
-    for(int i = 0; i < rows; i++){
-        for(int j = 0; j < cols; j++){
-            if(!grid[i][j].isMine() && !grid[i][j].isRevealed()){
-                return false;
-            }
 
-            
+    protected void flagTile(Grid tile){
+        if(!tile.isFlagged()){
+            tile.setFlagged();
+            tile.setBackground(Color.BLUE);
+            totalFlags--;
+        }
+        else {
+            tile.setOriginalColor();
+            tile.setFlagged();
+            totalFlags++;
         }
     }
-    return true;
-}
-    public void removeTile(int x, int y){
-        if(grid[x][y].isMine()){
+
+    private boolean win(){
+        for(int i = 0; i < rows; i++){
+            for(int j = 0; j < cols; j++){
+                if(!grid[i][j].isMine() && !grid[i][j].isRevealed()){
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private Color determineTileColor(int x, int y, boolean revealed){
+        Color green = new Color(167, 216, 161);
+        Color tan = new Color(220, 190, 150);
+
+        Color darkTan = new Color(200, 170, 130);
+        Color darkGreen = new Color(76, 175, 80);
+        if ((x + y) % 2 == 0) {
+            if(revealed) return tan;
+
+            return green;
+        }
+        else {
+            if(revealed) return darkTan;
+
+            return darkGreen;
+        }
+    }
+
+    private Color determineFontColor(int mines){
+        switch (mines) {
+            case 1: return Color.BLUE;
+            case 2: return new Color(0, 105, 0); // Dark green
+            case 3: return Color.RED;
+            case 4: return new Color(0, 0, 128); // Dark Blue
+            case 5: return new Color(178, 34, 34); //Red-ish
+            case 6: return new Color(72, 209, 204); // Teal
+            case 7: return Color.GRAY;
+            case 8: return Color.DARK_GRAY;
+            default: return Color.BLACK;
+        }
+    }
+
+    private void addTileListener(int row, int col, MouseEvent e){
+        if (SwingUtilities.isLeftMouseButton(e) && !e.isControlDown()) {
+            if (!start) {
+                start = true;
+                placeMines(row, col);
+                gameTimer.start();
+            }
+            if(!gameOver && !grid[row][col].isFlagged()){
+                removeTile(row, col);
+                if(grid[row][col].isMine()){
+                    explanationLabel.setText("You Lose! Time: " + (int) elapsedTime + " seconds");
+                    restartButton.setVisible(true);
+                    revealMines();
+                }
+                else if(win()){
+                    gameTimer.stop();
+                    gameOver = true;
+                    explanationLabel.setText("You Win! Time: " + (int) elapsedTime + " seconds");
+                    restartButton.setVisible(true);
+                    revealMines();
+                }
+            }
+        }
+        if (SwingUtilities.isRightMouseButton(e) || SwingUtilities.isLeftMouseButton(e) && e.isControlDown()){
+            if(grid[row][col].isRevealed() == false && !gameOver){
+                flagTile(grid[row][col]);
+            }
+        }
+    }
+
+    protected void removeTile(int x, int y){
+        Grid tile = grid[x][y];
+        if(tile.isMine()){
             gameTimer.stop();
             gameOver = true;
         } else {
-            grid[x][y].setRevealed();
-            Color tan = new Color(220, 190, 150);
-            Color darkerTan = new Color(200, 170, 130);
-            if ((x + y) % 2 == 0) {
-                grid[x][y].setBackground(tan);
-            } else {
-                grid[x][y].setBackground(darkerTan);
-            }
+            tile.setRevealed();
+            tile.setBackground(determineTileColor(x, y, true));
             if (grid[x][y].getNearbyMines() > 0) {
-                        grid[x][y].setText(Integer.toString(grid[x][y].getNearbyMines()));
-                    }
+                grid[x][y].setText(Integer.toString(grid[x][y].getNearbyMines()));
+            }
             int iMin = Math.max(0, x - 1);
             int iMax = Math.min(rows - 1, x + 1);
             int jMin = Math.max(0, y - 1);
             int jMax = Math.min(cols - 1, y + 1);
             for (int i = iMin; i <= iMax; i++) {
                 for (int j = jMin; j <= jMax; j++) {
-                    if(grid[i][j].isRevealed() == false && !(i == x && j == y) && grid[x][y].getNearbyMines() == 0){
-                        removeTile(i, j);
+                    if(grid[i][j] != null && grid[i][j].isRevealed() == false && tile.getNearbyMines() == 0){
                         if(grid[i][j].isFlagged()){
-                            grid[i][j].setFlagged();
-                            totalFlags++;
+                            flagTile(grid[i][j]);
                         }
+                        removeTile(i, j);
                     }
                 }
             }
