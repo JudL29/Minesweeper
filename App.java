@@ -6,7 +6,7 @@ public class App {
         Computer computer = new Computer();
 
         while (true) { 
-            computer.solveOneStep();
+            computer.runThroughBothOnce();
             Thread.sleep(30); // > 25 for smaller chance of buggy restarts
         }
     }

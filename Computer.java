@@ -3,34 +3,20 @@ import java.util.*;
 
 public final class Computer extends Game {
 
-    int ticker = 0;
+    public void runThroughBothOnce() {
+        runThroughEasyTillNoChange();
 
-    public void solveOnePass() {
-        if (!gameOver) {
-            findBombs();
-            clearTiles();
-            if (ticker % 4 == 3){
-                setTheories();
-            }
-            ticker++;
-        }
+        runThroughHardTillNoChange();
     }
 
-    public void solveOneStep() {
-        if (gameOver) return;
-
-        runThroughBothOnce();
-    }
-
-    
-    public boolean runThroughEasyOnce() {
+    public void runThroughEasyTillNoChange() {
         boolean change;
         do {
             change = false;
             for (int row = 0; row < rows; row++) {
                 for (int col = 0; col < cols; col++) {
-                    Grid t = grid[row][col];
-                    if (!t.isRevealed()) continue;
+                    Grid tile = grid[row][col];
+                    if (!tile.isRevealed()) continue;
 
                     change |= findBomb(row, col);
                     change |= clearTile(row, col);
@@ -38,26 +24,22 @@ public final class Computer extends Game {
             }
         }
         while (change);
-
-        return change;
     }
 
-    public void runThroughBothOnce() {
-        boolean progress = true;
-        while (progress) {
-            progress = runThroughEasyOnce();
-        }
-        setTheories();
-    }
+    public void runThroughHardTillNoChange() {
+        boolean change;
+        do {
+            change = false;
+            for (int row = 0; row < rows; row++) {
+                for (int col = 0; col < cols; col++) {
+                    Grid tile = grid[row][col];
+                    if (!tile.isRevealed()) continue;
 
-    private void findBombs(){
-        for (int row = 0; row < rows; row++){
-            for(int col = 0; col < cols; col++){
-                if (grid[row][col].isRevealed()) {
-                    findBomb(row, col);
+                    change |= setTheory(row, col);
                 }
             }
         }
+        while (change);
     }
     
     private boolean findBomb(int x, int y){
@@ -88,14 +70,6 @@ public final class Computer extends Game {
             }
         }
         return flaggedTile;
-    }
-    
-    private void clearTiles(){
-        for (int row = 0; row < rows; row++){
-            for(int col = 0; col < cols; col++){
-                if (grid[row][col].isRevealed()) clearTile(row, col);
-            }
-        }
     }
     
     private boolean clearTile(int x, int y){
@@ -131,18 +105,9 @@ public final class Computer extends Game {
         return clearedTile;
     }
 
-    private void setTheories(){
-        for (int row = 0; row < rows; row++) {
-            for (int col = 0; col < cols; col++) {
-                setTheory(row, col);
-            }
-        }
-    }
-
-    private void setTheory(int row, int col){
-
+    private boolean setTheory(int row, int col){
         Grid tile = grid[row][col];
-        if (!tile.isRevealed() || tile.getNearbyMines() == 0) return;
+        if (!tile.isRevealed() || tile.getNearbyMines() == 0) return false;
 
         int localMineOriginal = tile.getNearbyMines();
         Set<Grid> originalGroup = new HashSet<>();
@@ -168,7 +133,7 @@ public final class Computer extends Game {
             for (Grid revealThis : originalGroup){
                 removeTile(revealThis.getXCoord(), revealThis.getYCoord());
             }
-            return;
+            return true;
         }
         
         if (localMineOriginal == originalGroup.size()) {
@@ -176,7 +141,7 @@ public final class Computer extends Game {
                 flagTile(flagThis);
                 flagThis.setBackground(Color.PINK);
             }
-            return;
+            return true;
         }
         
         for (Grid pair : possiblePair) {
@@ -206,19 +171,24 @@ public final class Computer extends Game {
             if (diff == 0) {
                 if (originalExclusive.isEmpty() && !pairExclusive.isEmpty()) {
                     for (Grid removeExact : pairExclusive) removeTile(removeExact.getXCoord(), removeExact.getYCoord());
+                    return true;
                 }
-                // If P ⊆ O (pairExclusive empty), then O\P are safe
+
                 if (!originalExclusive.isEmpty() && pairExclusive.isEmpty()) {
                     for (Grid removeExact : originalExclusive) removeTile(removeExact.getXCoord(), removeExact.getYCoord());
+                    return true;
                 }
             }
             else if (diff > 0 && diff == originalExclusive.size()){
                 removeSetTheory(pairExclusive, originalExclusive);
+                return true;
             }
             else if (-diff == pairExclusive.size()){
                 removeSetTheory(originalExclusive, pairExclusive);
+                return true;
             }
         }
+        return false;
     }
 
     private void removeSetTheory(Set<Grid> reveal, Set<Grid> flag) {
@@ -235,6 +205,46 @@ public final class Computer extends Game {
 
     private void probability(){
         
+    }
+/*
+    Depreciated methods
+
+    int ticker = 0;
+
+    public void solveOnePass() {
+        if (!gameOver) {
+            findBombs();
+            clearTiles();
+            if (ticker % 4 == 3){
+                setTheories();
+            }
+            ticker++;
+        }
+    }
+    
+    private void findBombs(){
+        for (int row = 0; row < rows; row++){
+            for(int col = 0; col < cols; col++){
+                if (grid[row][col].isRevealed()) {
+                    findBomb(row, col);
+                }
+            }
+        }
+    }
+
+    private void clearTiles(){
+        for (int row = 0; row < rows; row++){
+            for(int col = 0; col < cols; col++){
+                if (grid[row][col].isRevealed()) clearTile(row, col);
+            }
+        }
+    }
+    private void setTheories(){
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                setTheory(row, col);
+            }
+        }
     }
 
     private void unflagIncorrectAroundTile(Grid tile){
@@ -266,4 +276,5 @@ public final class Computer extends Game {
             }
         }
     } 
+*/
 }
