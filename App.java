@@ -7,7 +7,7 @@ public class App {
 
         while (true) { 
             computer.runThroughBothOnce();
-            Thread.sleep(30); // > 25 for smaller chance of buggy restarts
+            Thread.sleep(100); //To make restarts less buggy, need to incorporate wait into restart later
         }
     }
 }

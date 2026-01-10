@@ -35,7 +35,7 @@ public class Game {
     
     Timer gameTimer;
     JLabel timerLabel = new JLabel("Time: 0 seconds");
-    Game() {
+    public Game(){
 
         // ===== Timer Panel =====
         timerPanel.setBackground(Color.lightGray);
@@ -79,77 +79,8 @@ public class Game {
         });
 
         boardPanel.setLayout(new GridLayout(rows, cols));
-
-        // Initialize grid logic cells
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                grid[i][j] = new Grid();
-            }
-        }
-
-        // Initialize tiles (buttons)
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                Grid tile = new Grid();
-                grid[i][j] = tile;
-
-                tile.setXCoord(i);
-                tile.setYCoord(j);
-                tile.setFont(new Font("Arial", Font.BOLD, 16));
-                tile.setMargin(new Insets(0, 0, 0, 0));
-                tile.setFocusPainted(false);
-                tile.setBorder(BorderFactory.createLineBorder(new Color(60, 120, 60), 1));
-                tile.setContentAreaFilled(true);
-                tile.setOpaque(true);
-                tile.setBackground(determineTileColor(i, j, false));
-
-                boardPanel.add(tile);
-
-                int row = i;
-                int col = j;
-
-                tile.addMouseListener(new MouseAdapter() {
-                    @Override
-                    public void mousePressed(MouseEvent e) {
-                        addTileListener(row, col, e);
-                    }
-                });
-            }
-        }
-
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                if (i-1 >= 0){
-                    grid[i][j].setNorth(grid[i-1][j]);
-                    if (j-1 >= 0) {
-                        grid[i][j].setNorthWest(grid[i-1][j-1]);
-                    }
-                    if (j+1 < cols) {
-                        grid[i][j].setNorthEast(grid[i-1][j+1]);
-                    }
-                }
-                if (i+1 < rows){
-                    grid[i][j].setSouth(grid[i+1][j]);
-                    if (j-1 >= 0) {
-                        grid[i][j].setSouthWest(grid[i+1][j-1]);
-                    }
-                    if(j+1 < cols){
-                        grid[i][j].setSouthEast(grid[i+1][j+1]);
-                    }
-                }
-                
-                if (j-1 >= 0){
-                    grid[i][j].setWest(grid[i][j-1]);
-                }
-                
-                if (j + 1 < cols) {
-                    grid[i][j].setEast(grid[i][j+1]);
-                }
-                
- 
-                
-            }
-        }
+        initializeTiles(rows, cols, grid);
+        setUpNeighbors(rows, cols, grid);
 
         // ===== Timer Logic =====
         gameTimer = new Timer(100, (ActionEvent e) -> {
@@ -157,7 +88,6 @@ public class Game {
                 elapsedTime += .1;
                 timerLabel.setText("Time: " + (int) elapsedTime + " seconds");
                 explanationLabel.setText("Flags remaining: " + totalFlags);
-                
             }
         });
         
@@ -173,6 +103,83 @@ public class Game {
         frame.setLocationRelativeTo(null); // Center on screen
         frame.setResizable(false);
         frame.setVisible(true); // FINAL step (prevents squished layout)
+    }
+
+    private void initializeTiles(int rowSize, int colSize, Grid tileGrid[][]){
+        for (int row = 0; row < rowSize; row++) {
+            for (int col = 0; col < colSize; col++) {
+                Grid tile = new Grid();
+                tileGrid[row][col] = tile;
+
+                tile.setXCoord(row);
+                tile.setYCoord(col);
+                tile.setFont(new Font("Arial", Font.BOLD, 16));
+                tile.setMargin(new Insets(0, 0, 0, 0));
+                tile.setFocusPainted(false);
+                tile.setBorder(BorderFactory.createLineBorder(new Color(60, 120, 60), 1));
+                tile.setContentAreaFilled(true);
+                tile.setOpaque(true);
+                tile.setBackground(determineTileColor(row, col, false));
+
+                boardPanel.add(tile);
+                
+                final int rowListener = row;
+                final int colListener = col;
+
+                tile.addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mousePressed(MouseEvent e) {
+                        addTileListener(rowListener, colListener, e);
+                    }
+                });
+            }
+        }
+    }
+
+    private void setUpNeighbors(int rowSize, int colSize, Grid tileGrid[][]){
+        for (int row = 0; row < rowSize; row++) {
+            for (int col = 0; col < colSize; col++) {
+                //If the row on the top exist
+                if (row-1 >= 0){
+                    tileGrid[row][col].setNorth(tileGrid[row-1][col]);
+
+                    //If the column to the left exist too
+                    if (col-1 >= 0) {
+                        tileGrid[row][col].setNorthWest(tileGrid[row-1][col-1]);
+                    }
+
+                    //If the column to the right exist too
+                    if (col+1 < cols) {
+                        tileGrid[row][col].setNorthEast(tileGrid[row-1][col+1]);
+                    }
+                }
+
+                //If the row on the bottom exist
+                if (row+1 < rows){
+                    tileGrid[row][col].setSouth(tileGrid[row+1][col]);
+
+                    //If the column to the left exist too
+                    if (col-1 >= 0) {
+                        tileGrid[row][col].setSouthWest(tileGrid[row+1][col-1]);
+                    }
+
+                    //If the column to the right exist too
+                    if(col+1 < cols){
+                        tileGrid[row][col].setSouthEast(tileGrid[row+1][col+1]);
+                    }
+                }
+                
+                //If the column to the left exist
+                if (col-1 >= 0){
+                    tileGrid[row][col].setWest(tileGrid[row][col-1]);
+                }
+                
+                //If the column to the right exist
+                if (col+1 < cols) {
+                    tileGrid[row][col].setEast(tileGrid[row][col+1]);
+                }
+            }
+        }
     }
 
     // ===== Place Mines After First Click =====
