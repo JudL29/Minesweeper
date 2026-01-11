@@ -136,8 +136,6 @@ public class Grid extends JButton {
         this.guessMines = true;
     }
 
-    
-
     public void reset() {
         this.nearbyMines = 0;
         this.isRevealed = false;
