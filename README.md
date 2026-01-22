@@ -5,3 +5,6 @@ The project was to make a computer helper to help to solve a minesweeper map and
 Made some minor improvement from then, but not that drastic
 
 Currently the project helped until there isn't a good way to find a bomb without trying to predict and map probabilities to remaining tiles.
+
+Original github project: https://github.com/teleportless/MineSweeper/tree/main
+We remote collaborated through discord and used VS code plugins to remotely develop
