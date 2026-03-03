@@ -4,6 +4,8 @@ import java.util.*;
 public final class Computer extends Game {
 
     public void runThroughBothOnce() {
+        if (!start || gameOver) return;
+        
         runThroughEasyTillNoChange();
 
         runThroughHardTillNoChange();
@@ -15,6 +17,8 @@ public final class Computer extends Game {
             change = false;
             for (int row = 0; row < rows; row++) {
                 for (int col = 0; col < cols; col++) {
+                    if (!start || gameOver) return;
+
                     Grid tile = grid[row][col];
                     if (!tile.isRevealed()) continue;
 
@@ -32,6 +36,8 @@ public final class Computer extends Game {
             change = false;
             for (int row = 0; row < rows; row++) {
                 for (int col = 0; col < cols; col++) {
+                    if (!start || gameOver) return;
+                    
                     Grid tile = grid[row][col];
                     if (!tile.isRevealed()) continue;
 
